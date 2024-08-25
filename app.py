@@ -285,6 +285,14 @@ def dados_pessoais():
 
     return render_template('dados_pessoais.html')
 
+@app.route('/buscar_produtos', methods=['GET'])
+def buscar_produtos():
+    query = request.args.get('query')
+    if query:
+        produtos = Produto.query.filter(Produto.nome.ilike(f'%{query}%')).all()
+    else:
+        produtos = Produto.query.all()
+    return render_template('index.html', produtos=produtos)
 
 
 @app.route('/dados_bancarios', methods=['GET', 'POST'])

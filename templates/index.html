@@ -7,7 +7,7 @@
 </head>
 <body>
     
-    <div>
+    <div style="margin-bottom: 20px;">
         {% if 'usuario_id' in session %}
         <p>Olá, {{ session['username'] }}!</p>
         <form action="{{ url_for('logout') }}" method="POST">
@@ -17,6 +17,13 @@
         <p>Bem-vindo! <a href="{{ url_for('login') }}">Login</a> ou <a href="{{ url_for('cadastro') }}">Cadastre-se</a></p>
     {% endif %}
     </div>
+
+    <!-- Formulário de Busca -->
+    <form action="{{ url_for('buscar_produtos') }}" method="GET">
+        <label for="query">Buscar Produtos:</label>
+        <input type="text" id="query" name="query" placeholder="Digite o nome do produto" required>
+        <button type="submit">Buscar</button>
+    </form>
     
     <h1>Produtos Disponíveis</h1>
     <ul>
