@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carrinho de Compras</title>
+</head>
+<body>
+    <h1>Carrinho de Compras</h1>
+    <ul>
+        {% for item in carrinho %}
+            <li>
+                {{ item.nome }} - R$ {{ item.preco }}
+                <!-- Botão para remover produto -->
+                <form action="{{ url_for('remover_do_carrinho') }}" method="POST" style="display:inline;">
+                    <input type="hidden" name="produto_id" value="{{ item.id }}">
+                    <button type="submit">Remover</button>
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+    
+
+    <h3>Total: R$ {{ total }}</h3>
+    <a href="/">Continuar comprando</a>
+    <form action="{{ url_for('dados_pessoais') }}" method="POST">
+        <button type="submit">Finalizar compra</button>
+    </form>
+    
+</body>
+</html>

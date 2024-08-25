@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dados Pessoais e Endereço</title>
+</head>
+<body>
+
+    <h1>Preencha seus dados pessoais e endereço</h1>
+<form action="{{ url_for('dados_bancarios') }}" method="POST">
+    <label for="nome">Nome Completo:</label><br>
+    <input type="text" id="nome" name="nome" required><br><br>
+
+    <label for="endereco">Endereço:</label><br>
+    <input type="text" id="endereco" name="endereco" required><br><br>
+
+    <label for="cidade">Cidade:</label><br>
+    <input type="text" id="cidade" name="cidade" required><br><br>
+
+    <label for="estado">Estado:</label><br>
+    <input type="text" id="estado" name="estado" required><br><br>
+
+    <label for="cep">CEP:</label><br>
+    <input type="text" id="cep" name="cep" required><br><br>
+
+    <!-- Botão de envio único -->
+    <button type="submit">Dados Bancários</button>
+</form>
+
+</body>
+</html>
