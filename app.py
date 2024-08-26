@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
+import requests
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
@@ -23,10 +24,9 @@ class Usuario(db.Model):
 class Produto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
-    preco = db.Column(db.Numeric(precision=10, scale=2), nullable=False)  # Precision define o total de dígitos e scale as casas decimais
-    descricao = db.Column(db.String(500))
-    estoque = db.Column(db.Integer, nullable=False)
-
+    descricao = db.Column(db.Text, nullable=False)
+    preco = db.Column(db.Float, nullable=False)
+    imagem_url = db.Column(db.String(200), nullable=True)
 
 # Cliente
 class Cliente(db.Model):
@@ -66,8 +66,39 @@ def login_required(f):
 
 @app.route('/')
 def index():
+    try:
+        # Faz a requisição à API externa
+        response = requests.get('https://fakestoreapi.com/products')
+        response.raise_for_status()  # Lança uma exceção se o status code não for 200
+
+        produtos_parceiro = response.json()
+
+        for produto in produtos_parceiro:
+            # Verifique se o produto já existe no banco de dados para evitar duplicados
+            if not Produto.query.filter_by(nome=produto['title']).first():
+                novo_produto = Produto(
+                    nome=produto['title'],
+                    descricao=produto['description'],
+                    preco=float(produto['price']),
+                    imagem_url=produto['image']
+                )
+                db.session.add(novo_produto)
+                print(f"Produto '{produto['title']}' adicionado com sucesso.")
+
+        # Comita as mudanças no banco de dados
+        db.session.commit()
+    
+    except requests.exceptions.RequestException as req_err:
+        print(f"Erro na requisição: {req_err}")
+        flash(f"Erro na requisição à API: {req_err}")
+    except Exception as e:
+        print(f"Erro ao importar produtos: {e}")
+        flash(f'Ocorreu um erro ao importar os produtos: {str(e)}')
+
+    # Após importar os produtos da API, buscar todos os produtos (incluindo os do banco de dados)
     produtos = Produto.query.all()  # Consulta todos os produtos
     return render_template('index.html', produtos=produtos)
+
 
 @app.route('/adicionar', methods=['GET', 'POST'])
 @login_required
@@ -288,11 +319,13 @@ def dados_pessoais():
 @app.route('/buscar_produtos', methods=['GET'])
 def buscar_produtos():
     query = request.args.get('query')
-    if query:
+    if query:  # Se houver uma consulta, faça a filtragem
         produtos = Produto.query.filter(Produto.nome.ilike(f'%{query}%')).all()
-    else:
+    else:  # Se o campo de busca estiver vazio, retorne todos os produtos
         produtos = Produto.query.all()
+    
     return render_template('index.html', produtos=produtos)
+
 
 
 @app.route('/dados_bancarios', methods=['GET', 'POST'])
@@ -409,6 +442,45 @@ def logout():
     session.clear()  # Limpa todos os dados da sessão
     #flash('Você saiu da sessão com sucesso.')
     return redirect(url_for('index'))  # Redireciona para a página de login
+
+
+
+@app.route('/importar_produtos_parceiro')
+def importar_produtos_parceiro():
+    try:
+        print("Fazendo a requisição para a API...")
+        response = requests.get('https://fakestoreapi.com/products')
+        print(f"Status Code: {response.status_code}")
+        response.raise_for_status()  # Lança uma exceção se o status code não for 200
+
+        produtos_parceiro = response.json()
+        print(f"Produtos recebidos: {produtos_parceiro}")
+
+        for produto in produtos_parceiro:
+            print(f"Verificando se o produto '{produto['title']}' já existe...")
+            if not Produto.query.filter_by(nome=produto['title']).first():
+                novo_produto = Produto(
+                    nome=produto['title'],
+                    descricao=produto['description'],
+                    preco=float(produto['price']),
+                    imagem_url=produto['image']
+                )
+                db.session.add(novo_produto)
+                print(f"Produto '{produto['title']}' adicionado com sucesso.")
+
+        db.session.commit()
+        flash('Produtos importados com sucesso!')
+    
+    except requests.exceptions.RequestException as req_err:
+        print(f"Erro na requisição: {req_err}")
+        flash(f"Erro na requisição à API: {req_err}")
+    except Exception as e:
+        print(f"Erro ao importar produtos: {e}")
+        flash(f'Ocorreu um erro ao importar os produtos: {str(e)}')
+    
+    return redirect(url_for('index'))
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)

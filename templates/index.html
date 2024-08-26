@@ -21,15 +21,18 @@
     <!-- Formulário de Busca -->
     <form action="{{ url_for('buscar_produtos') }}" method="GET">
         <label for="query">Buscar Produtos:</label>
-        <input type="text" id="query" name="query" placeholder="Digite o nome do produto" required>
+        <input type="text" id="query" name="query" placeholder="Digite o nome do produto">
         <button type="submit">Buscar</button>
     </form>
+    
     
     <h1>Produtos Disponíveis</h1>
     <ul>
         {% for produto in produtos %}
             <li>
                 {{ produto.nome }} - R$ {{ "%.2f"|format(produto.preco) }}
+
+                <img src="{{ produto.imagem_url }}" alt="{{ produto.nome }}" style="width: 100px;">
                 <!-- Botão para adicionar produto -->
                 <form action="{{ url_for('adicionar_ao_carrinho') }}" method="POST" style="display:inline;">
                     <input type="hidden" name="produto_id" value="{{ produto.id }}">
