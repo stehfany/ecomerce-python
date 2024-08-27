@@ -4,29 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dados Pessoais e Endereço</title>
+    <script>
+        function buscarCEP() {
+            var cep = document.getElementById('cep').value;
+            var url = `https://viacep.com.br/ws/${cep}/json/`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.erro) {
+                        document.getElementById('endereco').value = data.logradouro;
+                        document.getElementById('cidade').value = data.localidade;
+                        document.getElementById('estado').value = data.uf;
+                    } else {
+                        alert('CEP não encontrado!');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao buscar o CEP:', error);
+                    alert('Erro ao buscar o CEP. Tente novamente mais tarde.');
+                });
+        }
+    </script>
 </head>
 <body>
 
     <h1>Preencha seus dados pessoais e endereço</h1>
-<form action="{{ url_for('dados_bancarios') }}" method="POST">
-    <label for="nome">Nome Completo:</label><br>
-    <input type="text" id="nome" name="nome" required><br><br>
+    <form action="{{ url_for('dados_bancarios') }}" method="POST">
+        <label for="nome">Nome Completo:</label><br>
+        <input type="text" id="nome" name="nome" placeholder="Digite seu nome:" required><br><br>
 
-    <label for="endereco">Endereço:</label><br>
-    <input type="text" id="endereco" name="endereco" required><br><br>
+        <label for="cep">CEP:</label><br>
+        <input type="text" id="cep" name="cep" placeholder="Digite o CEP:" required onblur="buscarCEP()"><br><br>
 
-    <label for="cidade">Cidade:</label><br>
-    <input type="text" id="cidade" name="cidade" required><br><br>
+        <label for="endereco">Endereço:</label><br>
+        <input type="text" id="endereco" name="endereco" required><br><br>
 
-    <label for="estado">Estado:</label><br>
-    <input type="text" id="estado" name="estado" required><br><br>
+        <label for="cidade">Cidade:</label><br>
+        <input type="text" id="cidade" name="cidade" required><br><br>
 
-    <label for="cep">CEP:</label><br>
-    <input type="text" id="cep" name="cep" required><br><br>
+        <label for="estado">Estado:</label><br>
+        <input type="text" id="estado" name="estado" required><br><br>
 
-    <!-- Botão de envio único -->
-    <button type="submit">Dados Bancários</button>
-</form>
+        <button type="submit">Dados Bancários</button>
+    </form>
 
 </body>
 </html>

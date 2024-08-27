@@ -33,13 +33,15 @@
                 {{ produto.nome }} - R$ {{ "%.2f"|format(produto.preco) }}
 
                 <img src="{{ produto.imagem_url }}" alt="{{ produto.nome }}" style="width: 100px;">
-                <!-- Botão para adicionar produto -->
+                <!-- Formulário para adicionar produto com quantidade ao carrinho -->
                 <form action="{{ url_for('adicionar_ao_carrinho') }}" method="POST" style="display:inline;">
                     <input type="hidden" name="produto_id" value="{{ produto.id }}">
+                    <label for="quantidade_{{ produto.id }}">Quantidade:</label>
+                    <input style="width: 30px;" type="number" id="quantidade_{{ produto.id }}" name="quantidade" value="1" min="1" required>
                     <button type="submit">Adicionar ao carrinho</button>
                 </form>
                 
-    
+                
                 <!-- Verifica se o usuário tem permissão de administrador -->
                 {% if session.get('usuario_id') and session['usuario_id'].endswith('.adm@gmail.com') %}
                     <!-- Botão para editar produto -->

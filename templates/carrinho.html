@@ -10,18 +10,24 @@
     <ul>
         {% for item in carrinho %}
             <li>
-                {{ item.nome }} - R$ {{ item.preco }}
+                {{ item.quantidade }}x {{ item.nome }} - R$ {{ "%.2f"|format(item.preco) }} = R$ {{ "%.2f"|format(item.preco * item.quantidade) }}
                 <!-- Botão para remover produto -->
                 <form action="{{ url_for('remover_do_carrinho') }}" method="POST" style="display:inline;">
                     <input type="hidden" name="produto_id" value="{{ item.id }}">
+                    
+                    <br>
+                    <!-- Linha de baixo -->
+                    <label for="remover_quantidade_{{ item.id }}">Deseja remover? Quantidade a remover:</label>
+                    <br>
+                    <input type="number" id="remover_quantidade_{{ item.id }}" name="quantidade" value="1" min="1" max="{{ item.quantidade }}" required>
                     <button type="submit">Remover</button>
                 </form>
+                
             </li>
         {% endfor %}
     </ul>
     
-
-    <h3>Total: R$ {{ total }}</h3>
+    <h3>Total: R$ {{ "%.2f"|format(total) }}</h3>
     <a href="/">Continuar comprando</a>
     <form action="{{ url_for('dados_pessoais') }}" method="POST">
         <button type="submit">Finalizar compra</button>

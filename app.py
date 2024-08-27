@@ -159,6 +159,7 @@ def editar_produto(produto_id):
 @login_required
 def adicionar_ao_carrinho():
     produto_id = request.form['produto_id']
+    quantidade = int(request.form.get('quantidade', 1))  # Obter a quantidade do formulário
     produto = Produto.query.get(produto_id)
     
     if not produto:
@@ -172,16 +173,16 @@ def adicionar_ao_carrinho():
     # Verificar se o produto já está no carrinho
     for item in carrinho:
         if item['id'] == produto.id:
-            # Garantir que a chave 'quantidade' existe
-            item['quantidade'] = item.get('quantidade', 0) + 1
+            # Se estiver, atualize a quantidade
+            item['quantidade'] += quantidade
             break
     else:
-        # Se o produto não estiver no carrinho, adiciona um novo item
+        # Se não estiver, adicione o produto com a quantidade
         carrinho.append({
             'id': produto.id,
             'nome': produto.nome,
-            'preco': float(produto.preco),  # Certifique-se de que o preço seja um float
-            'quantidade': 1
+            'preco': float(produto.preco),
+            'quantidade': quantidade
         })
     
     session['carrinho'] = carrinho
@@ -193,21 +194,29 @@ def adicionar_ao_carrinho():
 
 
 
+
 @app.route('/remover_do_carrinho', methods=['POST'])
 @login_required
 def remover_do_carrinho():
     produto_id = int(request.form['produto_id'])
+    quantidade_a_remover = int(request.form.get('quantidade', 1))  # Obter a quantidade a remover
     
     if 'carrinho' in session:
         carrinho = session['carrinho']
         for item in carrinho:
             if item['id'] == produto_id:
-                carrinho.remove(item)
-                break  # Sai do loop após remover o primeiro item correspondente
+                if item['quantidade'] > quantidade_a_remover:
+                    item['quantidade'] -= quantidade_a_remover
+                else:
+                    carrinho.remove(item)
+                break  # Sai do loop após encontrar o item
         session['carrinho'] = carrinho
         session.modified = True  # Marca a sessão como modificada
 
     return redirect(url_for('carrinho'))
+
+
+
 
 @app.route('/finalizar_compras', methods=['POST'])
 @login_required
@@ -247,7 +256,8 @@ def finalizar_compras():
         print("Erro: Cliente não encontrado.")
         return redirect(url_for('index'))
 
-    total = sum([item['preco'] for item in carrinho])
+    # Corrigir o cálculo do total
+    total = sum(item['preco'] * item['quantidade'] for item in carrinho)
 
     # Criar um novo pedido
     novo_pedido = Pedido(cliente_id=cliente.id, total=total)
@@ -259,7 +269,7 @@ def finalizar_compras():
         novo_item = ItemPedido(
             pedido_id=novo_pedido.id,
             produto_id=item['id'],
-            quantidade=1,
+            quantidade=item['quantidade'],  # Usar a quantidade correta
             preco=item['preco']
         )
         db.session.add(novo_item)
@@ -272,6 +282,7 @@ def finalizar_compras():
 
     # Redirecionar para a página de confirmação do pedido
     return redirect(url_for('confirmacao_pedido', pedido_id=novo_pedido.id))
+
 
 
 
@@ -301,7 +312,7 @@ def dados_pessoais():
 
         if not nome or not endereco or not cidade or not estado or not cep:
             print("Faltando dados no formulário.")
-            flash("Por favor, preencha todos os campos.")
+            #flash("Por favor, preencha todos os campos.")
             return redirect(url_for('dados_pessoais'))
 
         # Processar os dados pessoais e endereço
@@ -365,13 +376,23 @@ def dados_bancarios():
 
 
 @app.route('/carrinho')
+@login_required
 def carrinho():
     carrinho = session.get('carrinho', [])
     
+    # Debugging: printar itens do carrinho e preços
+    for item in carrinho:
+        print(f"Produto: {item['nome']}, Quantidade: {item['quantidade']}, Preço unitário: {item['preco']}, Subtotal: {item['preco'] * item['quantidade']}")
+    
     # Calcula o total considerando a quantidade de cada item
-    total = sum(float(item['preco']) * int(item['quantidade']) for item in carrinho)
+    total = sum(item['preco'] * item['quantidade'] for item in carrinho)
+    
+    print(f"Total do carrinho: R$ {total:.2f}")
     
     return render_template('carrinho.html', carrinho=carrinho, total=total)
+
+
+
 
 
 @app.route('/cadastro', methods=['GET', 'POST'])
