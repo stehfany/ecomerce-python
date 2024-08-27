@@ -9,7 +9,7 @@ app = Flask(__name__)
 app.secret_key = b'\xdc\xc1K\x1a\xf4\x8e+|\t\x8a\xb7l\xb1w\xaf\x82\xdd\x07wa\xb6\x0cH\xf8'
 
 # Configuração da URI do banco de dados MySQL
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:12345@localhost:3306/ecommerce'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:12345@host.docker.internal:3306/ecommerce'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Desativa o rastreamento de modificações, economizando recursos.
 
 db = SQLAlchemy(app)
