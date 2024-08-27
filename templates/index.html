@@ -4,62 +4,133 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Loja Online</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
+    crossorigin="anonymous"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-jc7g7eVuj+4AkLCBOEj9GmJ1xS/7qC68Lv+POM/+pPVXclPlTQozAbDb+c8qBooP" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-DFXNZJZ69GtXXp02Wx1PeD9KZJ9Rkjr8zJZ7gWdKwAtC5+Md5tRQDZfExcyK79CS" crossorigin="anonymous">
+    <script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+    crossorigin="anonymous"
+  ></script>
+
+
+
 </head>
 <body>
+    <nav style="background-color: #007bff; padding: 20px; color: white; width: 100%; box-sizing: border-box;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 1.7em; font-weight: bold; margin-left: 15px;">ML Software</span>
+            
+            <!-- Formulário de busca centralizado -->
+            <form action="{{ url_for('buscar_produtos') }}" method="GET" style="flex-grow: 1; text-align: center; margin: 0;">
+                <input style="width: 250px; padding: 7px;" type="text" id="query" name="query" placeholder="Buscar Produtos:">
+                <button type="submit" style="flex-grow: 1; text-align: center; margin: 0; padding:7px ; margin-left: -10px;">
+                    <i class="bi bi-gender-neuter" style="margin-right: 5px;"></i>
+                 
+                </button>
+            </form>
     
-    <div style="margin-bottom: 20px;">
-        {% if 'usuario_id' in session %}
-        <p>Olá, {{ session['username'] }}!</p>
-        <form action="{{ url_for('logout') }}" method="POST">
-            <button type="submit">Sair</button>
-        </form>
-    {% else %}
-        <p>Bem-vindo! <a href="{{ url_for('login') }}">Login</a> ou <a href="{{ url_for('cadastro') }}">Cadastre-se</a></p>
-    {% endif %}
-    </div>
-
-    <!-- Formulário de Busca -->
-    <form action="{{ url_for('buscar_produtos') }}" method="GET">
-        <label for="query">Buscar Produtos:</label>
-        <input type="text" id="query" name="query" placeholder="Digite o nome do produto">
-        <button type="submit">Buscar</button>
-    </form>
-    
-    
-    <h1>Produtos Disponíveis</h1>
-    <ul>
-        {% for produto in produtos %}
-            <li>
-                {{ produto.nome }} - R$ {{ "%.2f"|format(produto.preco) }}
-
-                <img src="{{ produto.imagem_url }}" alt="{{ produto.nome }}" style="width: 100px;">
-                <!-- Formulário para adicionar produto com quantidade ao carrinho -->
-                <form action="{{ url_for('adicionar_ao_carrinho') }}" method="POST" style="display:inline;">
-                    <input type="hidden" name="produto_id" value="{{ produto.id }}">
-                    <label for="quantidade_{{ produto.id }}">Quantidade:</label>
-                    <input style="width: 30px;" type="number" id="quantidade_{{ produto.id }}" name="quantidade" value="1" min="1" required>
-                    <button type="submit">Adicionar ao carrinho</button>
+            <!-- Bloco de carrinho, saudação e login/logout -->
+            <div style="display: flex; align-items: center; margin-left: auto;">
+                <form action="/carrinho" method="GET" style="margin-right: 20px;">
+                    <button type="submit" style="background-color: transparent; border: none; color: white; cursor: pointer; display: flex; align-items: center;">
+                        <i class="bi bi-cart" style="margin-right: 5px;"></i>
+                        Visualizar carrinho
+                    </button>
                 </form>
                 
-                
-                <!-- Verifica se o usuário tem permissão de administrador -->
-                {% if session.get('usuario_id') and session['usuario_id'].endswith('.adm@gmail.com') %}
-                    <!-- Botão para editar produto -->
-                    <form action="{{ url_for('editar_produto', produto_id=produto.id) }}" method="GET" style="display:inline;">
-                        <button type="submit">Editar</button>
-                    </form>
+                <div style="text-align: right; position: relative;">
+                    {% if 'usuario_id' in session %}
+                        <p style="margin: 0; display: inline-block;">Olá, {{ session['username'] }}!</p>
+                        
+                        <!-- Menu Dropdown -->
+                        <div style="display: inline-block; position: relative; margin-left: 10px;">
+                            <button id="dropdownToggle" style="background-color: transparent; border: none; color: white; cursor: pointer; font-size: 1.2em;">
+                                &#9660; <!-- Ícone de seta para baixo -->
+                            </button>
+                            <div id="dropdownMenu" style="position: absolute; right: 0; background-color: white; color: black; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); display: none; min-width: 150px; z-index: 1;">
+                                <form action="{{ url_for('logout') }}" method="POST" style="margin: 0;">
+                                    <button type="submit" style="background-color: transparent; border: none; color: black; width: 100%; padding: 10px; text-align: left; cursor: pointer;">Sair</button>
+                                </form>
+                                <!-- Adicione outras opções aqui se necessário -->
+                            </div>
+                        </div>
+                    {% else %}
+                        <p style="margin: 0;">Bem-vindo! Faça o <a href="{{ url_for('login') }}" style="color: white;">Login</a> ou <a href="{{ url_for('cadastro') }}" style="color: white;">Cadastre-se</a></p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
     
-                    <!-- Botão para deletar produto -->
-                    <form action="{{ url_for('deletar_produto', produto_id=produto.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja deletar este produto?');">
-                        <button type="submit">Deletar</button>
-                    </form>
-                {% endif %}
-            </li>
-        {% endfor %}
-    </ul>
+
     
-    <div>
-        {% with messages = get_flashed_messages() %}
+    
+    
+    <section id="produtos">
+        <div class="container" id="produtos-container">
+            <div class="col-12">
+                <h2 style="margin-top: 20px;" class="title primary-color">Produtos</h2>
+                <p class="subtitle secondary-color">
+                    Confira nossos produtos mais populares
+                </p>
+            </div>
+            <div class="col-12" id="produtos-grid">
+                <div class="row g-4">
+                    {% for produto in produtos %}
+                    <div class="col-12 col-md-4">
+                        <div class="card h-100 d-flex flex-column">
+                            <div class="card-img-container">
+                                <img src="{{ produto.imagem_url }}" alt="{{ produto.nome }}" class="img-fluid card-img" />
+                            </div>
+                            <div class="card-body d-flex flex-column flex-grow-1">
+                                <h2>{{ produto.nome }}</h2>
+                                <p>R$ {{ "%.2f"|format(produto.preco) }}</p>
+    
+                                <!-- Formulário para adicionar produto com quantidade ao carrinho -->
+                                <div class="d-flex justify-content-center align-items-center flex-grow-1">
+                                    <form action="{{ url_for('adicionar_ao_carrinho') }}" method="POST" class="text-center">
+                                        <input type="hidden" name="produto_id" value="{{ produto.id }}">
+                                        <div style="margin-top: 5px; margin-bottom: 5px;" class="form-group">
+                                            <label for="quantidade_{{ produto.id }}">Quantidade:</label>
+                                            <input type="number" class="form-control text-center" id="quantidade_{{ produto.id }}" name="quantidade" value="1" min="1" required style="width: 60px; margin: 0 auto;">
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">Adicionar ao carrinho</button>
+                                    </form>
+                                </div>
+    
+                                <!-- Verifica se o usuário tem permissão de administrador -->
+                                {% if session.get('usuario_id') and session['usuario_id'].endswith('.adm@gmail.com') %}
+                                <div class="mt-2">
+                                    <form action="{{ url_for('editar_produto', produto_id=produto.id) }}" method="GET" style="display:inline;">
+                                        <button type="submit" class="btn btn-warning">Editar</button>
+                                    </form>
+                                    <form action="{{ url_for('deletar_produto', produto_id=produto.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja deletar este produto?');">
+                                        <button type="submit" class="btn btn-danger">Deletar</button>
+                                    </form>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    
+    
+    
+    
+    <!-- Exibição de mensagens de flash -->
+    {% with messages = get_flashed_messages() %}
         {% if messages %}
             <script>
                 {% for message in messages %}
@@ -68,25 +139,53 @@
             </script>
         {% endif %}
     {% endwith %}
+    
+    {% if session.get('usuario_id') and session['usuario_id'].endswith('.adm@gmail.com') %}
+        <div style="margin-top: 50px; margin-left: 20px;">
+            <a href="/adicionar">
+                <button class="btn btn-success">
+                    Adicionar mais produtos
+                </button>
+            </a>
+        </div>
+    {% endif %}
+    
+  
+<script>
+    document.getElementById('dropdownToggle').addEventListener('click', function(event) {
+        event.stopPropagation(); // Impede o evento de se propagar e fechar o dropdown imediatamente
+        const dropdown = document.getElementById('dropdownMenu');
+        dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    });
 
+    // Fechar o dropdown ao clicar fora dele
+    window.onclick = function(event) {
+        if (!event.target.matches('#dropdownToggle')) {
+            const dropdown = document.getElementById('dropdownMenu');
+            if (dropdown.style.display === 'block') {
+                dropdown.style.display = 'none';
+            }
+        }
+    };
+</script>
+<div style="background-color: #007bff; padding:20px; margin-top: 100px;" class="col-12" id="footer-bottom">
+    <div class="row justify-content-between">
+      <div class="col-12 col-md-3">
+        <p style="margin-left: 20px; color: white;" class="secondary-color">ML Software &copy; 2024</p>
+      </div>
+      <div class="col-12 col-md-3">
+        <p style="color: white;" class="secondary-color">
+          Realizamos o seu projeto com
+          <i class="bi bi-heart"></i>
+        </p>
+      </div>
     </div>
-  {% if session.get('usuario_id') and session['usuario_id'].endswith('.adm@gmail.com') %}
-    <div>
-        <a href="/adicionar">
-            <button>
-                adicionar mais produtos
-            </button>
-        </a>
-    </div>
-{% endif %}
-  
-  
-    <div>
-        <a href="/carrinho">
-            <button>
-                Visualizar carrinho
-            </button>
-        </a>
-    </div>
+  </div>
+</div>
+
+</div>
+</footer>
+</section>
 </body>
+
 </html>

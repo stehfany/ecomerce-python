@@ -4,6 +4,51 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dados Pessoais e Endereço</title>
+    <style>
+        body {
+            background-color: #3498db; /* Cor de fundo azul */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            background-color: #fff; /* Caixa branca */
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 300px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        label, input {
+            margin-bottom: 10px;
+        }
+        input {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+    </style>
     <script>
         function buscarCEP() {
             var cep = document.getElementById('cep').value;
@@ -29,25 +74,27 @@
 </head>
 <body>
 
-    <h1>Preencha seus dados pessoais e endereço</h1>
-    <form action="{{ url_for('dados_bancarios') }}" method="POST">
-        <label for="nome">Nome Completo:</label><br>
-        <input type="text" id="nome" name="nome" placeholder="Digite seu nome:" required><br><br>
+    <div class="container">
+        <h1>Preencha seus dados</h1>
+        <form action="{{ url_for('dados_bancarios') }}" method="POST">
+            <label for="nome">Nome Completo:</label>
+            <input type="text" id="nome" name="nome" placeholder="Digite seu nome:" required>
 
-        <label for="cep">CEP:</label><br>
-        <input type="text" id="cep" name="cep" placeholder="Digite o CEP:" required onblur="buscarCEP()"><br><br>
+            <label for="cep">CEP:</label>
+            <input type="text" id="cep" name="cep" placeholder="Digite o CEP:" required onblur="buscarCEP()">
 
-        <label for="endereco">Endereço:</label><br>
-        <input type="text" id="endereco" name="endereco" required><br><br>
+            <label for="endereco">Endereço:</label>
+            <input type="text" id="endereco" name="endereco" required>
 
-        <label for="cidade">Cidade:</label><br>
-        <input type="text" id="cidade" name="cidade" required><br><br>
+            <label for="cidade">Cidade:</label>
+            <input type="text" id="cidade" name="cidade" required>
 
-        <label for="estado">Estado:</label><br>
-        <input type="text" id="estado" name="estado" required><br><br>
+            <label for="estado">Estado:</label>
+            <input type="text" id="estado" name="estado" required>
 
-        <button type="submit">Dados Bancários</button>
-    </form>
+            <button type="submit">Dados Bancários</button>
+        </form>
+    </div>
 
 </body>
 </html>

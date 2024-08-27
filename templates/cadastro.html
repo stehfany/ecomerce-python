@@ -4,21 +4,88 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cadastro</title>
+    <style>
+        body {
+            background-color: #f0f2f5; /* Fundo suave */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        .register-container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 350px;
+            width: 100%;
+        }
+        .register-container h1 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .register-container label {
+            display: block;
+            text-align: left;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: bold;
+        }
+        .register-container input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .register-container button {
+            width: 100%;
+            padding: 12px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .register-container button:hover {
+            background-color: #2980b9;
+        }
+        .register-container p {
+            margin-top: 20px;
+            color: #777;
+        }
+        .register-container a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .register-container a:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body>
-    <h1>Cadastro de Usuário</h1>
-    <form method="POST">
-        <label for="username">Nome de Usuário:</label>
-        <input type="text" id="username" name="username" required><br><br>
 
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" required><br><br>
+    <div class="register-container">
+        <h1>Cadastro de Usuário</h1>
+        <form method="POST">
+            <label for="username">Nome de Usuário:</label>
+            <input type="text" id="username" name="username" required>
 
-        <label for="senha">Senha:</label>
-        <input type="password" id="senha" name="senha" required><br><br>
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required>
 
-        <button type="submit">Cadastrar</button>
-    </form>
-    <p>Já tem uma conta? <a href="{{ url_for('login') }}">Login</a></p>
+            <label for="senha">Senha:</label>
+            <input type="password" id="senha" name="senha" required>
+
+            <button type="submit">Cadastrar</button>
+        </form>
+        <p>Já tem uma conta? <a href="{{ url_for('login') }}">Login</a></p>
+    </div>
+
 </body>
 </html>

@@ -27,3 +27,19 @@ migrations/
 # Arquivos temporários de sistema
 .DS_Store
 Thumbs.db
+ecommerce/Lib/site-packages/pycparser-2.22.dist-info/RECORD
+
+# Ignorar tudo
+*
+
+# Exceto o arquivo app.py
+!app.py
+
+# Exceto o diretório templates
+!templates/
+!templates/**
+
+# Exceto o diretório static
+!static/
+!static/**
+

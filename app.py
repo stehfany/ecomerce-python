@@ -59,7 +59,7 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'usuario_id' not in session:
-            flash('Você precisa estar logado para acessar essa página.')
+            #flash('Você precisa estar logado para acessar essa página.')
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
@@ -405,7 +405,7 @@ def cadastro():
 
         usuario_existente = Usuario.query.filter_by(email=email).first()
         if usuario_existente:
-            flash('Email já cadastrado.')
+            #flash('Email já cadastrado.')
             return redirect(url_for('cadastro'))
 
         novo_usuario = Usuario(username=username, email=email, senha=senha_hash)

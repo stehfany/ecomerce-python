@@ -4,11 +4,68 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Confirmação do Pedido</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .confirmation-container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+        .confirmation-container h1 {
+            color: #27ae60;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .confirmation-container p {
+            font-size: 18px;
+            margin: 10px 0;
+            color: #333;
+        }
+        .confirmation-container .order-number {
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #555;
+        }
+        .confirmation-container .total {
+            font-size: 20px;
+            margin: 20px 0;
+            color: #2c3e50;
+        }
+        .confirmation-container button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .confirmation-container button:hover {
+            background-color: #2980b9;
+        }
+    </style>
 </head>
 <body>
-    <h1>Pedido #{{ pedido.id }} Confirmado!</h1>
-    <p>Obrigado por sua compra, {{ pedido.cliente.nome }}.</p>
-    <p>Total da Compra: R$ {{ pedido.total }}</p>
-    <a href="{{ url_for('index') }}">Voltar para a página inicial</a>
+
+    <div class="confirmation-container">
+        <h1>✔️ Pedido #{{ pedido.id }} Confirmado!</h1>
+        <p>Obrigado por sua compra, {{ pedido.cliente.nome }}.</p>
+        <p class="order-number">Número do Pedido: #{{ pedido.id }}</p>
+        <p class="total">Total da Compra: R$ {{ pedido.total }}</p>
+        <button onclick="window.location.href='{{ url_for('index') }}'">Voltar para a página inicial</button>
+    </div>
+
 </body>
 </html>
