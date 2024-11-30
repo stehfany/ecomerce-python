@@ -34,6 +34,7 @@ ecommerce/Lib/site-packages/pycparser-2.22.dist-info/RECORD
 
 # Exceto o arquivo app.py
 !app.py
+!test_app.py
 
 # Exceto o diretório templates
 !templates/
