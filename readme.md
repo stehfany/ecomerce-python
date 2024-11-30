@@ -1,6 +1,6 @@
 
 ## Testes Automatizados para o Sistema de Loja Online ##
-Descrição das funções que serão testadas:
+Descrição das funções testadas:
 
 Este projeto utiliza o framework pytest para realizar testes unitários e de integração no sistema de loja online. Os testes verificam a funcionalidade das principais rotas e operações, como cadastro, login, manipulação de carrinho de compras, finalização de compras, e busca de produtos, etc.
 
