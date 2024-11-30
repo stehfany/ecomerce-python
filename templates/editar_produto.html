@@ -4,24 +4,120 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Editar Produto</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        form {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            margin: auto;
+        }
+        label {
+            font-weight: bold;
+            color: #555;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        a {
+            display: block;
+            margin-top: 20px;
+            text-align: center;
+            color: #007bff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .error-message {
+            color: red;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+    </style>
+    <script>
+        function validateForm(event) {
+            const nome = document.getElementById('nome').value.trim();
+            const preco = document.getElementById('preco').value.trim();
+            const descricao = document.getElementById('descricao').value.trim();
+            const estoque = document.getElementById('estoque').value.trim();
+            const errorContainer = document.getElementById('error-container');
+            
+            errorContainer.innerHTML = ""; // Limpa mensagens de erro anteriores
+
+            let hasError = false;
+
+            if (!nome) {
+                errorContainer.innerHTML += "<p>O campo 'Nome' é obrigatório.</p>";
+                hasError = true;
+            }
+            if (!preco || isNaN(preco) || parseFloat(preco) <= 0) {
+                errorContainer.innerHTML += "<p>O campo 'Preço' deve ser um número maior que 0.</p>";
+                hasError = true;
+            }
+            if (!estoque || isNaN(estoque) || parseInt(estoque) < 0) {
+                errorContainer.innerHTML += "<p>O campo 'Estoque' deve ser um número inteiro maior ou igual a 0.</p>";
+                hasError = true;
+            }
+
+            if (hasError) {
+                event.preventDefault(); // Impede o envio do formulário em caso de erro
+            }
+        }
+    </script>
 </head>
 <body>
-    <h1>Editar Produto</h1>
-    <form action="{{ url_for('editar_produto', produto_id=produto.id) }}" method="POST">
-        <label for="nome">Nome:</label><br>
-        <input type="text" id="nome" name="nome" value="{{ produto.nome }}" required><br><br>
+    {% if produto %}
+        <h1>Editar Produto</h1>
+        <form action="{{ url_for('editar_produto', produto_id=produto.id) }}" method="POST" onsubmit="validateForm(event)">
+            <div id="error-container" class="error-message"></div>
+            
+            <label for="nome">Nome:</label><br>
+            <input type="text" id="nome" name="nome" value="{{ produto.nome }}" required><br>
 
-        <label for="preco">Preço:</label><br>
-        <input type="text" id="preco" name="preco" value="{{ produto.preco }}" required><br><br>
+            <label for="preco">Preço:</label><br>
+            <input type="text" id="preco" name="preco" value="{{ produto.preco }}" required><br>
 
-        <label for="descricao">Descrição:</label><br>
-        <input type="text" id="descricao" name="descricao" value="{{ produto.descricao }}"><br><br>
+            <label for="descricao">Descrição:</label><br>
+            <input type="text" id="descricao" name="descricao" value="{{ produto.descricao }}"><br>
 
-        <label for="estoque">Estoque:</label><br>
-        <input type="text" id="estoque" name="estoque" value="{{ produto.estoque }}" required><br><br>
+            <label for="estoque">Estoque:</label><br>
+            <input type="text" id="estoque" name="estoque" value="{{ produto.estoque }}" required><br>
 
-        <button type="submit">Salvar Alterações</button>
-    </form>
-    <a href="{{ url_for('index') }}">Voltar para a lista de produtos</a>
+            <button type="submit">Salvar Alterações</button>
+        </form>
+        <a href="{{ url_for('index') }}">Voltar para a lista de produtos</a>
+    {% else %}
+        <div class="error-message">
+            <h1>Erro ao carregar o produto</h1>
+            <p>Não foi possível encontrar as informações do produto. Por favor, tente novamente.</p>
+            <a href="{{ url_for('index') }}">Voltar para a lista de produtos</a>
+        </div>
+    {% endif %}
 </body>
 </html>

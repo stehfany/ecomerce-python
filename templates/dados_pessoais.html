@@ -48,21 +48,32 @@
         button:hover {
             background-color: #2980b9;
         }
+        .error-message {
+            color: red;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
     </style>
     <script>
         function buscarCEP() {
-            var cep = document.getElementById('cep').value;
+            var cep = document.getElementById('cep').value.trim();
+
+            if (!cep || cep.length !== 8 || isNaN(cep)) {
+                alert("Por favor, insira um CEP válido com 8 números.");
+                return;
+            }
+
             var url = `https://viacep.com.br/ws/${cep}/json/`;
 
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     if (!data.erro) {
-                        document.getElementById('endereco').value = data.logradouro;
-                        document.getElementById('cidade').value = data.localidade;
-                        document.getElementById('estado').value = data.uf;
+                        document.getElementById('endereco').value = data.logradouro || '';
+                        document.getElementById('cidade').value = data.localidade || '';
+                        document.getElementById('estado').value = data.uf || '';
                     } else {
-                        alert('CEP não encontrado!');
+                        alert('CEP não encontrado! Por favor, verifique e tente novamente.');
                     }
                 })
                 .catch(error => {
@@ -70,13 +81,52 @@
                     alert('Erro ao buscar o CEP. Tente novamente mais tarde.');
                 });
         }
+
+        function validateForm(event) {
+            const nome = document.getElementById('nome').value.trim();
+            const cep = document.getElementById('cep').value.trim();
+            const endereco = document.getElementById('endereco').value.trim();
+            const cidade = document.getElementById('cidade').value.trim();
+            const estado = document.getElementById('estado').value.trim();
+            const errorContainer = document.getElementById('error-container');
+
+            errorContainer.innerHTML = ""; // Limpa mensagens de erro anteriores
+            let hasError = false;
+
+            if (!nome) {
+                errorContainer.innerHTML += "<p>O campo 'Nome Completo' é obrigatório.</p>";
+                hasError = true;
+            }
+            if (!cep || cep.length !== 8 || isNaN(cep)) {
+                errorContainer.innerHTML += "<p>O campo 'CEP' deve conter 8 números.</p>";
+                hasError = true;
+            }
+            if (!endereco) {
+                errorContainer.innerHTML += "<p>O campo 'Endereço' é obrigatório.</p>";
+                hasError = true;
+            }
+            if (!cidade) {
+                errorContainer.innerHTML += "<p>O campo 'Cidade' é obrigatório.</p>";
+                hasError = true;
+            }
+            if (!estado) {
+                errorContainer.innerHTML += "<p>O campo 'Estado' é obrigatório.</p>";
+                hasError = true;
+            }
+
+            if (hasError) {
+                event.preventDefault(); // Impede o envio do formulário
+            }
+        }
     </script>
 </head>
 <body>
 
     <div class="container">
         <h1>Preencha seus dados</h1>
-        <form action="{{ url_for('dados_bancarios') }}" method="POST">
+        <form action="{{ url_for('dados_bancarios') }}" method="POST" onsubmit="validateForm(event)">
+            <div id="error-container" class="error-message"></div>
+            
             <label for="nome">Nome Completo:</label>
             <input type="text" id="nome" name="nome" placeholder="Digite seu nome:" required>
 

@@ -4,19 +4,126 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Adicionar Produto</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .form-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 350px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        textarea {
+            resize: none;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .error-message {
+            color: red;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+    </style>
+    <script>
+        function validateForm(event) {
+            const nomeField = document.getElementById('nome');
+            const precoField = document.getElementById('preco');
+            const estoqueField = document.getElementById('estoque');
+            const errorContainer = document.getElementById('error-container');
+
+            let errors = [];
+
+            // Validações
+            if (nomeField.value.trim() === '') {
+                errors.push('O nome do produto é obrigatório.');
+            }
+            if (!precoField.value || isNaN(precoField.value) || parseFloat(precoField.value) <= 0) {
+                errors.push('O preço deve ser um número positivo.');
+            }
+            if (!estoqueField.value || isNaN(estoqueField.value) || parseInt(estoqueField.value) < 0) {
+                errors.push('O estoque deve ser um número inteiro não negativo.');
+            }
+
+            // Exibir erros se existirem
+            if (errors.length > 0) {
+                event.preventDefault();
+                errorContainer.innerHTML = errors.map(err => `<p>${err}</p>`).join('');
+                return false;
+            }
+
+            return true;
+        }
+    </script>
 </head>
 <body>
-    <h1>Adicionar Produto</h1>
-    <form method="POST">
-        <label for="nome">Nome:</label>
-        <input type="text" id="nome" name="nome"><br><br>
-        <label for="preco">Preço:</label>
-        <input type="text" id="preco" name="preco"><br><br>
-        <label for="descricao">Descrição:</label>
-        <textarea id="descricao" name="descricao"></textarea><br><br>
-        <label for="estoque">Estoque:</label>
-        <input type="text" id="estoque" name="estoque"><br><br>
-        <button type="submit">Adicionar</button>
-    </form>
+
+    <div class="form-container">
+        <h1>Adicionar Produto</h1>
+        <!-- Exibir mensagens de erro -->
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="error-message">
+                {% for message in messages %}
+                    <p>{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Formulário -->
+        <form method="POST" onsubmit="return validateForm(event);">
+            <div id="error-container" class="error-message"></div>
+            <label for="nome">Nome:</label>
+            <input type="text" id="nome" name="nome" placeholder="Digite o nome do produto" required>
+
+            <label for="preco">Preço:</label>
+            <input type="text" id="preco" name="preco" placeholder="Digite o preço do produto" required>
+
+            <label for="descricao">Descrição:</label>
+            <textarea id="descricao" name="descricao" placeholder="Digite a descrição do produto" rows="4"></textarea>
+
+            <label for="estoque">Estoque:</label>
+            <input type="text" id="estoque" name="estoque" placeholder="Digite a quantidade em estoque" required>
+
+            <button type="submit">Adicionar</button>
+        </form>
+    </div>
+
 </body>
 </html>

@@ -55,17 +55,28 @@
         .confirmation-container button:hover {
             background-color: #2980b9;
         }
+        .error-message {
+            color: red;
+            font-size: 18px;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
-
-    <div class="confirmation-container">
-        <h1>✔️ Pedido #{{ pedido.id }} Confirmado!</h1>
-        <p>Obrigado por sua compra, {{ pedido.cliente.nome }}.</p>
-        <p class="order-number">Número do Pedido: #{{ pedido.id }}</p>
-        <p class="total">Total da Compra: R$ {{ pedido.total }}</p>
-        <button onclick="window.location.href='{{ url_for('index') }}'">Voltar para a página inicial</button>
-    </div>
-
+    {% if pedido and pedido.cliente and pedido.total %}
+        <div class="confirmation-container">
+            <h1>✔️ Pedido #{{ pedido.id }} Confirmado!</h1>
+            <p>Obrigado por sua compra, {{ pedido.cliente.nome }}.</p>
+            <p class="order-number">Número do Pedido: #{{ pedido.id }}</p>
+            <p class="total">Total da Compra: R$ {{ "%.2f"|format(pedido.total) }}</p>
+            <button onclick="window.location.href='{{ url_for('index') }}'">Voltar para a página inicial</button>
+        </div>
+    {% else %}
+        <div class="confirmation-container">
+            <h1 class="error-message">⚠️ Erro na Confirmação do Pedido</h1>
+            <p>Não foi possível encontrar os dados do pedido.</p>
+            <button onclick="window.location.href='{{ url_for('index') }}'">Voltar para a página inicial</button>
+        </div>
+    {% endif %}
 </body>
 </html>

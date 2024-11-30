@@ -3,21 +3,36 @@ import requests
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
+import pymysql
+from sqlalchemy.exc import SQLAlchemyError
 
 app = Flask(__name__)
 
 app.secret_key = b'\xdc\xc1K\x1a\xf4\x8e+|\t\x8a\xb7l\xb1w\xaf\x82\xdd\x07wa\xb6\x0cH\xf8'
 
+
 # Configuração da URI do banco de dados MySQL
-#app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:12345@host.docker.internal:3306/ecommerce'
-#app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Desativa o rastreamento de modificações, economizando recursos.
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:12345@127.0.0.1:3306/ecommerce'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Desativa o rastreamento de modificações, economizando recursos.
 
-#online 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://b65bd316d97510:eca1fcc3@us-cluster-east-01.k8s.cleardb.net/heroku_60b876b987241e4'
-# Evitar avisos de rastreamento de modificações, que podem aumentar a sobrecarga
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
+# Instância do SQLAlchemy para integração com o Flask
 db = SQLAlchemy(app)
+
+# Função para verificar a conexão com o banco de dados utilizando PyMySQL
+def verificar_conexao_pymysql():
+    try:
+        connection = pymysql.connect(
+            host='host.docker.internal',  # Substitua se necessário
+            user='root',
+            password='12345',
+            database='ecommerce',
+            port=3306
+        )
+        print("Conexão com o banco de dados (PyMySQL) bem-sucedida!")
+        connection.close()
+    except Exception as e:
+        print(f"Erro ao conectar ao banco de dados (PyMySQL): {e}")
+
 
 # Cadastro de Usuário
 class Usuario(db.Model):
@@ -63,49 +78,91 @@ with app.app_context():
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'usuario_id' not in session:
-            #flash('Você precisa estar logado para acessar essa página.')
+        try:
+            # Verificar se o usuário está logado
+            if 'usuario_id' not in session:
+                flash('Você precisa estar logado para acessar essa página.', 'error')
+                return redirect(url_for('login'))
+            
+            # Executa a função decorada
+            return f(*args, **kwargs)
+        
+        except KeyError as e:
+            # Erro inesperado relacionado à sessão
+            print(f"Erro na verificação de login: {e}")
+            flash("Erro ao verificar o status de login. Tente novamente mais tarde.", 'error')
             return redirect(url_for('login'))
-        return f(*args, **kwargs)
+        
+        except Exception as e:
+            # Captura erros gerais
+            print(f"Erro inesperado no decorador login_required: {e}")
+            flash("Erro inesperado ao verificar o login. Entre em contato com o suporte.", 'error')
+            return redirect(url_for('login'))
+
     return decorated_function
+
 
 @app.route('/')
 def index():
     try:
         # Faz a requisição à API externa
-        response = requests.get('https://fakestoreapi.com/products')
+        response = requests.get('https://fakestoreapi.com/products', timeout=10)
         response.raise_for_status()  # Lança uma exceção se o status code não for 200
 
         produtos_parceiro = response.json()
 
         for produto in produtos_parceiro:
-            # Verifique se o produto já existe no banco de dados para evitar duplicados
-            if not Produto.query.filter_by(nome=produto['title']).first():
-                novo_produto = Produto(
-                    nome=produto['title'],
-                    descricao=produto['description'],
-                    preco=float(produto['price']),
-                    imagem_url=produto['image']
-                )
-                db.session.add(novo_produto)
-                print(f"Produto '{produto['title']}' adicionado com sucesso.")
+            try:
+                # Verifique se o produto já existe no banco de dados para evitar duplicados
+                if not Produto.query.filter_by(nome=produto['title']).first():
+                    novo_produto = Produto(
+                        nome=produto['title'],
+                        descricao=produto['description'],
+                        preco=float(produto['price']),
+                        imagem_url=produto['image']
+                    )
+                    db.session.add(novo_produto)
+                    print(f"Produto '{produto['title']}' adicionado com sucesso.")
+            except SQLAlchemyError as db_err:
+                print(f"Erro ao salvar produto no banco de dados: {db_err}")
+                flash(f"Erro ao salvar o produto '{produto['title']}' no banco de dados.", 'error')
+            except Exception as e:
+                print(f"Erro inesperado ao processar o produto '{produto['title']}': {e}")
+                flash(f"Erro inesperado ao processar o produto '{produto['title']}'.", 'error')
 
         # Comita as mudanças no banco de dados
-        db.session.commit()
+        try:
+            db.session.commit()
+        except SQLAlchemyError as db_commit_err:
+            print(f"Erro ao salvar mudanças no banco de dados: {db_commit_err}")
+            flash("Erro ao salvar as alterações no banco de dados.", 'error')
     
+    except requests.exceptions.Timeout:
+        print("Erro: A requisição à API demorou demais e foi cancelada.")
+        flash("A requisição à API demorou demais e foi cancelada. Tente novamente mais tarde.", 'error')
     except requests.exceptions.RequestException as req_err:
         print(f"Erro na requisição: {req_err}")
-        flash(f"Erro na requisição à API: {req_err}")
+        flash(f"Erro na requisição à API: {req_err}", 'error')
     except Exception as e:
-        print(f"Erro ao importar produtos: {e}")
-        flash(f'Ocorreu um erro ao importar os produtos: {str(e)}')
+        print(f"Erro inesperado ao importar produtos: {e}")
+        flash(f"Ocorreu um erro inesperado ao importar os produtos: {str(e)}", 'error')
 
-    # Após importar os produtos da API, buscar todos os produtos (incluindo os do banco de dados)
-    produtos = Produto.query.all()  # Consulta todos os produtos
+    try:
+        # Após importar os produtos da API, buscar todos os produtos (incluindo os do banco de dados)
+        produtos = Produto.query.all()  # Consulta todos os produtos
+    except SQLAlchemyError as db_query_err:
+        print(f"Erro ao consultar produtos no banco de dados: {db_query_err}")
+        flash("Erro ao carregar os produtos do banco de dados.", 'error')
+        produtos = []
+    except Exception as e:
+        print(f"Erro inesperado ao carregar os produtos: {e}")
+        flash("Erro inesperado ao carregar os produtos.", 'error')
+        produtos = []
+
     return render_template('index.html', produtos=produtos)
 
 
-@app.route('/adicionar', methods=['GET', 'POST'])
+@app.route('/adicionar', methods=['GET', 'POST']) # função do sistema adicionar mais produtos na tela e banco
 @login_required
 def adicionar_produto():
     if request.method == 'POST':
@@ -115,6 +172,7 @@ def adicionar_produto():
         estoque = int(request.form['estoque'])
 
         novo_produto = Produto(nome=nome, preco=preco, descricao=descricao, estoque=estoque)
+        print(f"Produto para adicionar: {novo_produto}")  # Log para depuração
         db.session.add(novo_produto)
         db.session.commit()
 
@@ -123,7 +181,7 @@ def adicionar_produto():
 
     return render_template('adicionar_produtos.html')
 
-@app.route('/deletar_produto/<int:produto_id>', methods=['POST'])
+@app.route('/deletar_produto/<int:produto_id>', methods=['POST']) # função do sistema adicionar mais produtos na tela e banco
 @login_required
 def deletar_produto(produto_id):
     produto = Produto.query.get(produto_id)
@@ -138,7 +196,7 @@ def deletar_produto(produto_id):
     
     return redirect(url_for('index'))
 
-@app.route('/editar_produto/<int:produto_id>', methods=['GET', 'POST'])
+@app.route('/editar_produto/<int:produto_id>', methods=['GET', 'POST']) # função do sistema adicionar mais produtos na tela e banco
 @login_required
 def editar_produto(produto_id):
     produto = Produto.query.get_or_404(produto_id)
@@ -163,36 +221,64 @@ def editar_produto(produto_id):
 @app.route('/adicionar_ao_carrinho', methods=['POST'])
 @login_required
 def adicionar_ao_carrinho():
-    produto_id = request.form['produto_id']
-    quantidade = int(request.form.get('quantidade', 1))  # Obter a quantidade do formulário
-    produto = Produto.query.get(produto_id)
-    
-    if not produto:
-        return "Produto não encontrado", 404
+    try:
+        # Obter dados do formulário
+        produto_id = request.form.get('produto_id')
+        quantidade = request.form.get('quantidade', 1)
 
-    if 'carrinho' not in session:
-        session['carrinho'] = []
+        # Validação dos dados do formulário
+        if not produto_id or not quantidade:
+            flash("Produto ou quantidade inválidos.", 'error')
+            return redirect(url_for('index'))
+        
+        try:
+            quantidade = int(quantidade)
+        except ValueError:
+            flash("Quantidade deve ser um número válido.", 'error')
+            return redirect(url_for('index'))
 
-    carrinho = session['carrinho']
+        # Buscar produto no banco de dados
+        produto = Produto.query.get(produto_id)
+        if not produto:
+            flash("Produto não encontrado.", 'error')
+            return redirect(url_for('index'))
 
-    # Verificar se o produto já está no carrinho
-    for item in carrinho:
-        if item['id'] == produto.id:
-            # Se estiver, atualize a quantidade
-            item['quantidade'] += quantidade
-            break
-    else:
-        # Se não estiver, adicione o produto com a quantidade
-        carrinho.append({
-            'id': produto.id,
-            'nome': produto.nome,
-            'preco': float(produto.preco),
-            'quantidade': quantidade
-        })
-    
-    session['carrinho'] = carrinho
-    session.modified = True  # Marca a sessão como modificada
+        # Inicializar o carrinho na sessão, se não existir
+        if 'carrinho' not in session:
+            session['carrinho'] = []
+
+        carrinho = session['carrinho']
+
+        # Verificar se o produto já está no carrinho
+        for item in carrinho:
+            if item['id'] == produto.id:
+                # Se estiver, atualize a quantidade
+                item['quantidade'] += quantidade
+                flash(f"A quantidade do produto '{produto.nome}' foi atualizada no carrinho.", 'success')
+                break
+        else:
+            # Se não estiver, adicione o produto com a quantidade
+            carrinho.append({
+                'id': produto.id,
+                'nome': produto.nome,
+                'preco': float(produto.preco),
+                'quantidade': quantidade
+            })
+            flash(f"O produto '{produto.nome}' foi adicionado ao carrinho.", 'success')
+
+        # Atualizar a sessão
+        session['carrinho'] = carrinho
+        session.modified = True  # Marca a sessão como modificada
+
+    except KeyError as e:
+        print(f"Erro ao acessar dados do formulário: {e}")
+        flash("Erro ao processar o pedido. Por favor, tente novamente.", 'error')
+    except Exception as e:
+        print(f"Erro inesperado ao adicionar ao carrinho: {e}")
+        flash("Erro inesperado ao adicionar ao carrinho. Por favor, tente novamente mais tarde.", 'error')
+
     return redirect(url_for('carrinho'))
+
 
 
 
@@ -203,22 +289,55 @@ def adicionar_ao_carrinho():
 @app.route('/remover_do_carrinho', methods=['POST'])
 @login_required
 def remover_do_carrinho():
-    produto_id = int(request.form['produto_id'])
-    quantidade_a_remover = int(request.form.get('quantidade', 1))  # Obter a quantidade a remover
-    
-    if 'carrinho' in session:
+    try:
+        # Obter o produto_id e a quantidade a remover do formulário
+        produto_id = request.form.get('produto_id')
+        quantidade_a_remover = request.form.get('quantidade', 1)
+
+        # Validação dos dados do formulário
+        if not produto_id or not quantidade_a_remover:
+            flash("Produto ou quantidade inválidos.", 'error')
+            return redirect(url_for('carrinho'))
+        
+        try:
+            produto_id = int(produto_id)
+            quantidade_a_remover = int(quantidade_a_remover)
+        except ValueError:
+            flash("ID do produto ou quantidade inválidos.", 'error')
+            return redirect(url_for('carrinho'))
+
+        if 'carrinho' not in session:
+            flash("Carrinho está vazio.", 'error')
+            return redirect(url_for('carrinho'))
+
         carrinho = session['carrinho']
+
+        # Verificar se o produto existe no carrinho
         for item in carrinho:
             if item['id'] == produto_id:
                 if item['quantidade'] > quantidade_a_remover:
                     item['quantidade'] -= quantidade_a_remover
+                    flash(f"A quantidade do produto '{item['nome']}' foi atualizada.", 'success')
                 else:
                     carrinho.remove(item)
-                break  # Sai do loop após encontrar o item
+                    flash(f"O produto '{item['nome']}' foi removido do carrinho.", 'success')
+                break
+        else:
+            flash("Produto não encontrado no carrinho.", 'error')
+
+        # Atualizar o carrinho na sessão
         session['carrinho'] = carrinho
-        session.modified = True  # Marca a sessão como modificada
+        session.modified = True
+
+    except KeyError as e:
+        print(f"Erro ao acessar dados do formulário: {e}")
+        flash("Erro ao processar o pedido. Por favor, tente novamente.", 'error')
+    except Exception as e:
+        print(f"Erro inesperado ao remover do carrinho: {e}")
+        flash("Erro inesperado ao remover do carrinho. Por favor, tente novamente mais tarde.", 'error')
 
     return redirect(url_for('carrinho'))
+
 
 
 
@@ -226,140 +345,19 @@ def remover_do_carrinho():
 @app.route('/finalizar_compras', methods=['POST'])
 @login_required
 def finalizar_compras():
-    # Receber os dados bancários diretamente do formulário
-    numero_cartao = request.form.get('numero_cartao')
-    nome_titular = request.form.get('nome_titular')
-    validade = request.form.get('validade')
-    cvv = request.form.get('cvv')
-
-    # Print para depuração
-    print(f"Recebido - Cartão: {numero_cartao}, Titular: {nome_titular}, Validade: {validade}, CVV: {cvv}")
-
-    if not numero_cartao or not nome_titular or not validade or not cvv:
-        flash('Por favor, preencha todos os dados bancários.')
-        return redirect(url_for('dados_bancarios'))
-
-    # Salvar os dados bancários na sessão
-    session['dados_bancarios'] = {
-        'numero_cartao': numero_cartao,
-        'nome_titular': nome_titular,
-        'validade': validade,
-        'cvv': cvv
-    }
-
-    # Continuar com o processamento da compra
-    carrinho = session.get('carrinho', [])
-    if not carrinho:
-        flash('Seu carrinho está vazio.')
-        return redirect(url_for('carrinho'))
-
-    cliente_id = session.get('usuario_id')
-    cliente = Cliente.query.filter_by(email=cliente_id).first()
-
-    if not cliente:
-        flash('Cliente não encontrado.')
-        print("Erro: Cliente não encontrado.")
-        return redirect(url_for('index'))
-
-    # Corrigir o cálculo do total
-    total = sum(item['preco'] * item['quantidade'] for item in carrinho)
-
-    # Criar um novo pedido
-    novo_pedido = Pedido(cliente_id=cliente.id, total=total)
-    db.session.add(novo_pedido)
-    db.session.commit()
-
-    # Adicionar itens ao pedido
-    for item in carrinho:
-        novo_item = ItemPedido(
-            pedido_id=novo_pedido.id,
-            produto_id=item['id'],
-            quantidade=item['quantidade'],  # Usar a quantidade correta
-            preco=item['preco']
-        )
-        db.session.add(novo_item)
-    db.session.commit()
-
-    # Limpar o carrinho e dados bancários da sessão
-    session.pop('carrinho', None)
-    session.pop('dados_bancarios', None)
-    session.modified = True
-
-    # Redirecionar para a página de confirmação do pedido
-    return redirect(url_for('confirmacao_pedido', pedido_id=novo_pedido.id))
-
-
-
-
-
-
-@app.route('/confirmacao_pedido/<int:pedido_id>')
-@login_required
-def confirmacao_pedido(pedido_id):
-    pedido = Pedido.query.get_or_404(pedido_id)
-    nome_titular = request.args.get('nome_titular')  # Recebendo o nome do titular do URL
-    return render_template('finalizar_compras.html', pedido=pedido, nome_titular=nome_titular)
-
-
-
-@app.route('/dados_pessoais', methods=['GET', 'POST'])
-def dados_pessoais():
-    if request.method == 'POST':
-        print("Dados recebidos:", request.form)  # Debugging
-
-        nome = request.form.get('nome')
-        endereco = request.form.get('endereco')
-        cidade = request.form.get('cidade')
-        estado = request.form.get('estado')
-        cep = request.form.get('cep')
-
-        print(f"Nome: {nome}, Endereço: {endereco}, Cidade: {cidade}, Estado: {estado}, CEP: {cep}")
-
-        if not nome or not endereco or not cidade or not estado or not cep:
-            print("Faltando dados no formulário.")
-            #flash("Por favor, preencha todos os campos.")
-            return redirect(url_for('dados_pessoais'))
-
-        # Processar os dados pessoais e endereço
-        session['nome'] = nome
-        session['endereco'] = endereco
-        session['cidade'] = cidade
-        session['estado'] = estado
-        session['cep'] = cep
-
-        # Redirecionar para a página de dados bancários
-        return redirect(url_for('dados_bancarios'))
-
-    return render_template('dados_pessoais.html')
-
-@app.route('/buscar_produtos', methods=['GET'])
-def buscar_produtos():
-    query = request.args.get('query')
-    if query:  # Se houver uma consulta, faça a filtragem
-        produtos = Produto.query.filter(Produto.nome.ilike(f'%{query}%')).all()
-    else:  # Se o campo de busca estiver vazio, retorne todos os produtos
-        produtos = Produto.query.all()
-    
-    return render_template('index.html', produtos=produtos)
-
-
-
-@app.route('/dados_bancarios', methods=['GET', 'POST'])
-@login_required
-def dados_bancarios():
-    if request.method == 'POST':
-        # Coletar os dados bancários do formulário
+    try:
+        # Receber os dados bancários diretamente do formulário
         numero_cartao = request.form.get('numero_cartao')
         nome_titular = request.form.get('nome_titular')
         validade = request.form.get('validade')
         cvv = request.form.get('cvv')
 
-        # Debugging: Verifique se os dados estão sendo recebidos corretamente
+        # Print para depuração
         print(f"Recebido - Cartão: {numero_cartao}, Titular: {nome_titular}, Validade: {validade}, CVV: {cvv}")
 
-        # Verificar se todos os campos estão preenchidos
+        # Validar os dados bancários
         if not numero_cartao or not nome_titular or not validade or not cvv:
-            #flash('Por favor, preencha todos os dados bancários.')
+            flash('Por favor, preencha todos os dados bancários.', 'error')
             return redirect(url_for('dados_bancarios'))
 
         # Salvar os dados bancários na sessão
@@ -371,30 +369,249 @@ def dados_bancarios():
         }
         session.modified = True
 
-        # Printar os dados bancários para verificação
-        print("Dados bancários salvos na sessão:", session['dados_bancarios'])
+        # Verificar se o carrinho está vazio
+        carrinho = session.get('carrinho', [])
+        if not carrinho:
+            flash('Seu carrinho está vazio.', 'error')
+            return redirect(url_for('carrinho'))
 
-        # Redirecionar para finalizar a compra
-        return redirect(url_for('finalizar_compras'))
+        # Verificar se o cliente existe
+        cliente_id = session.get('usuario_id')
+        cliente = Cliente.query.filter_by(email=cliente_id).first()
+        if not cliente:
+            flash('Cliente não encontrado.', 'error')
+            print("Erro: Cliente não encontrado.")
+            return redirect(url_for('index'))
+
+        # Corrigir o cálculo do total
+        total = sum(item['preco'] * item['quantidade'] for item in carrinho)
+
+        # Criar um novo pedido
+        try:
+            novo_pedido = Pedido(cliente_id=cliente.id, total=total)
+            db.session.add(novo_pedido)
+            db.session.commit()
+        except Exception as e:
+            print(f"Erro ao criar pedido: {e}")
+            flash("Erro ao processar seu pedido. Tente novamente.", 'error')
+            return redirect(url_for('carrinho'))
+
+        # Adicionar itens ao pedido
+        try:
+            for item in carrinho:
+                novo_item = ItemPedido(
+                    pedido_id=novo_pedido.id,
+                    produto_id=item['id'],
+                    quantidade=item['quantidade'],
+                    preco=item['preco']
+                )
+                db.session.add(novo_item)
+            db.session.commit()
+        except Exception as e:
+            print(f"Erro ao adicionar itens ao pedido: {e}")
+            flash("Erro ao adicionar itens ao seu pedido. Tente novamente.", 'error')
+            return redirect(url_for('carrinho'))
+
+        # Limpar o carrinho e os dados bancários da sessão
+        session.pop('carrinho', None)
+        session.pop('dados_bancarios', None)
+        session.modified = True
+
+        flash('Compra finalizada com sucesso!', 'success')
+        return redirect(url_for('confirmacao_pedido', pedido_id=novo_pedido.id))
+
+    except KeyError as e:
+        print(f"Erro ao acessar dados na sessão: {e}")
+        flash("Erro ao processar a compra. Tente novamente.", 'error')
+        return redirect(url_for('carrinho'))
+    except Exception as e:
+        print(f"Erro inesperado ao finalizar compras: {e}")
+        flash("Erro inesperado ao finalizar a compra. Entre em contato com o suporte.", 'error')
+        return redirect(url_for('carrinho'))
+
+
+
+
+
+
+
+@app.route('/confirmacao_pedido/<int:pedido_id>')
+@login_required
+def confirmacao_pedido(pedido_id):
+    try:
+        # Tenta buscar o pedido no banco de dados
+        pedido = Pedido.query.get_or_404(pedido_id)
+        nome_titular = request.args.get('nome_titular', 'Desconhecido')  # Default para 'Desconhecido' se não fornecido
+        return render_template('finalizar_compras.html', pedido=pedido, nome_titular=nome_titular)
+    except SQLAlchemyError as db_err:
+        print(f"Erro ao buscar pedido no banco de dados: {db_err}")
+        flash("Erro ao carregar a confirmação do pedido. Tente novamente mais tarde.", 'error')
+        return redirect(url_for('index'))
+    except Exception as e:
+        print(f"Erro inesperado ao carregar a página de confirmação: {e}")
+        flash("Erro inesperado ao carregar a confirmação do pedido. Entre em contato com o suporte.", 'error')
+        return redirect(url_for('index'))
+
+
+
+
+@app.route('/dados_bancarios', methods=['GET', 'POST'])
+@login_required
+def dados_bancarios():
+    try:
+        if request.method == 'POST':
+            # Coletar os dados bancários do formulário
+            numero_cartao = request.form.get('numero_cartao')
+            nome_titular = request.form.get('nome_titular')
+            validade = request.form.get('validade')
+            cvv = request.form.get('cvv')
+
+            # Debugging: Verifique se os dados estão sendo recebidos corretamente
+            print(f"Recebido - Cartão: {numero_cartao}, Titular: {nome_titular}, Validade: {validade}, CVV: {cvv}")
+
+            # Validar se todos os campos estão preenchidos
+            if not numero_cartao or not nome_titular or not validade or not cvv:
+                flash("Por favor, preencha todos os dados bancários.", 'error')
+                return redirect(url_for('dados_bancarios'))
+
+            # Salvar os dados bancários na sessão
+            session['dados_bancarios'] = {
+                'numero_cartao': numero_cartao,
+                'nome_titular': nome_titular,
+                'validade': validade,
+                'cvv': cvv
+            }
+            session.modified = True
+
+            # Printar os dados bancários para verificação
+            print("Dados bancários salvos na sessão:", session['dados_bancarios'])
+
+            flash("Dados bancários salvos com sucesso!", 'success')
+            return redirect(url_for('finalizar_compras'))
+    except KeyError as e:
+        print(f"Erro ao acessar dados do formulário: {e}")
+        flash("Erro ao processar os dados bancários. Tente novamente.", 'error')
+        return redirect(url_for('dados_bancarios'))
+    except Exception as e:
+        print(f"Erro inesperado ao salvar dados bancários: {e}")
+        flash("Erro inesperado ao salvar os dados bancários. Entre em contato com o suporte.", 'error')
+        return redirect(url_for('dados_bancarios'))
 
     return render_template('dados_bancarios.html')
+
+
+
+
+@app.route('/buscar_produtos', methods=['GET'])
+def buscar_produtos():
+    try:
+        # Obter a consulta do usuário
+        query = request.args.get('query', '').strip()
+        
+        if query:  # Se houver uma consulta
+            produtos = Produto.query.filter(Produto.nome.ilike(f'%{query}%')).all()
+            if not produtos:
+                flash(f"Nenhum produto encontrado para a consulta '{query}'.", 'info')
+        else:  # Se o campo de busca estiver vazio, retorne todos os produtos
+            produtos = Produto.query.all()
+
+        return render_template('index.html', produtos=produtos)
+
+    except SQLAlchemyError as db_err:
+        print(f"Erro ao buscar produtos no banco de dados: {db_err}")
+        flash("Erro ao buscar produtos. Tente novamente mais tarde.", 'error')
+        return redirect(url_for('index'))
+
+    except Exception as e:
+        print(f"Erro inesperado ao buscar produtos: {e}")
+        flash("Erro inesperado ao buscar produtos. Entre em contato com o suporte.", 'error')
+        return redirect(url_for('index'))
+
+
+
+@app.route('/dados_pessoais', methods=['GET', 'POST'])
+def dados_pessoais():
+    try:
+        if request.method == 'POST':
+            print("Dados recebidos:", request.form)  # Debugging
+
+            nome = request.form.get('nome')
+            endereco = request.form.get('endereco')
+            cidade = request.form.get('cidade')
+            estado = request.form.get('estado')
+            cep = request.form.get('cep')
+
+            print(f"Nome: {nome}, Endereço: {endereco}, Cidade: {cidade}, Estado: {estado}, CEP: {cep}")
+
+            # Validação dos campos
+            if not nome or not endereco or not cidade or not estado or not cep:
+                flash("Por favor, preencha todos os campos obrigatórios.", 'error')
+                return redirect(url_for('dados_pessoais'))
+
+            # Processar e salvar os dados na sessão
+            session['nome'] = nome
+            session['endereco'] = endereco
+            session['cidade'] = cidade
+            session['estado'] = estado
+            session['cep'] = cep
+            session.modified = True
+
+            flash("Dados pessoais salvos com sucesso!", 'success')
+
+            # Redirecionar para a página de dados bancários
+            return redirect(url_for('dados_bancarios'))
+
+    except KeyError as e:
+        print(f"Erro ao acessar dados do formulário: {e}")
+        flash("Erro ao processar os dados pessoais. Tente novamente.", 'error')
+    except Exception as e:
+        print(f"Erro inesperado ao salvar dados pessoais: {e}")
+        flash("Erro inesperado ao salvar dados pessoais. Entre em contato com o suporte.", 'error')
+
+    return render_template('dados_pessoais.html')
+
+
 
 
 @app.route('/carrinho')
 @login_required
 def carrinho():
-    carrinho = session.get('carrinho', [])
-    
-    # Debugging: printar itens do carrinho e preços
-    for item in carrinho:
-        print(f"Produto: {item['nome']}, Quantidade: {item['quantidade']}, Preço unitário: {item['preco']}, Subtotal: {item['preco'] * item['quantidade']}")
-    
-    # Calcula o total considerando a quantidade de cada item
-    total = sum(item['preco'] * item['quantidade'] for item in carrinho)
-    
-    print(f"Total do carrinho: R$ {total:.2f}")
-    
-    return render_template('carrinho.html', carrinho=carrinho, total=total)
+    try:
+        # Obter o carrinho da sessão
+        carrinho = session.get('carrinho', [])
+
+        if not isinstance(carrinho, list):
+            flash("Erro no formato dos dados do carrinho. Carrinho reiniciado.", 'error')
+            carrinho = []
+            session['carrinho'] = carrinho
+            session.modified = True
+
+        if not carrinho:
+            flash("Seu carrinho está vazio.", 'info')
+
+        # Debugging: Printar itens do carrinho e preços
+        for item in carrinho:
+            try:
+                print(f"Produto: {item['nome']}, Quantidade: {item['quantidade']}, Preço unitário: {item['preco']}, Subtotal: {item['preco'] * item['quantidade']}")
+            except KeyError as e:
+                print(f"Erro ao acessar dados do item no carrinho: {e}")
+                flash("Erro ao acessar dados de um produto no carrinho. Verifique os itens adicionados.", 'error')
+        
+        # Calcula o total considerando a quantidade de cada item
+        total = sum(item.get('preco', 0) * item.get('quantidade', 0) for item in carrinho)
+
+        print(f"Total do carrinho: R$ {total:.2f}")
+
+        return render_template('carrinho.html', carrinho=carrinho, total=total)
+
+    except KeyError as e:
+        print(f"Erro ao acessar dados do carrinho: {e}")
+        flash("Erro ao acessar os dados do carrinho. Tente novamente.", 'error')
+        return redirect(url_for('index'))
+    except Exception as e:
+        print(f"Erro inesperado ao carregar o carrinho: {e}")
+        flash("Erro inesperado ao carregar o carrinho. Entre em contato com o suporte.", 'error')
+        return redirect(url_for('index'))
 
 
 
@@ -402,109 +619,150 @@ def carrinho():
 
 @app.route('/cadastro', methods=['GET', 'POST'])
 def cadastro():
-    if request.method == 'POST':
-        username = request.form['username']
-        email = request.form['email']
-        senha = request.form['senha']
-        senha_hash = generate_password_hash(senha)
+    try:
+        if request.method == 'POST':
+            username = request.form.get('username', '').strip()
+            email = request.form.get('email', '').strip()
+            senha = request.form.get('senha', '').strip()
 
-        usuario_existente = Usuario.query.filter_by(email=email).first()
-        if usuario_existente:
-            #flash('Email já cadastrado.')
-            return redirect(url_for('cadastro'))
+            # Validação dos campos
+            if not username or not email or not senha:
+                flash("Todos os campos são obrigatórios.", 'error')
+                return redirect(url_for('cadastro'))
 
-        novo_usuario = Usuario(username=username, email=email, senha=senha_hash)
-        db.session.add(novo_usuario)
+            if Usuario.query.filter_by(email=email).first():
+                flash("Email já cadastrado.", 'error')
+                return redirect(url_for('cadastro'))
 
-        # Criar também um novo cliente na tabela Cliente
-        novo_cliente = Cliente(id=email, nome=username, email=email)
-        db.session.add(novo_cliente)
+            # Criar novo usuário e cliente
+            senha_hash = generate_password_hash(senha)
+            novo_usuario = Usuario(username=username, email=email, senha=senha_hash)
+            novo_cliente = Cliente(id=email, nome=username, email=email)
 
-        db.session.commit()
+            try:
+                db.session.add(novo_usuario)
+                db.session.add(novo_cliente)
+                db.session.commit()
+            except Exception as db_err:
+                print(f"Erro ao salvar no banco de dados: {db_err}")
+                db.session.rollback()
+                flash("Erro ao realizar o cadastro. Tente novamente.", 'error')
+                return redirect(url_for('cadastro'))
 
-        # Usando o email como identificador na sessão
-        session['usuario_id'] = novo_usuario.email
-        session['username'] = novo_usuario.username
+            # Adicionar informações à sessão
+            session['usuario_id'] = novo_usuario.email
+            session['username'] = novo_usuario.username
 
-        return redirect(url_for('login'))
+            flash("Cadastro realizado com sucesso!", 'success')
+            return redirect(url_for('login'))
+    except Exception as e:
+        print(f"Erro inesperado no cadastro: {e}")
+        flash("Erro inesperado ao realizar o cadastro. Entre em contato com o suporte.", 'error')
+        return redirect(url_for('cadastro'))
+
     return render_template('cadastro.html')
+
 
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == 'POST':
-        email = request.form['email']
-        senha = request.form['senha']
+    try:
+        if request.method == 'POST':
+            email = request.form.get('email', '').strip()
+            senha = request.form.get('senha', '').strip()
 
-        # Debugging prints
-        print(f"Email recebido: {email}")
-        print(f"Senha recebida: {senha}")
+            # Validação dos campos
+            if not email or not senha:
+                flash("Email e senha são obrigatórios.", 'error')
+                return redirect(url_for('login'))
 
-        usuario = Usuario.query.filter_by(email=email).first()
+            usuario = Usuario.query.filter_by(email=email).first()
+            if usuario:
+                if check_password_hash(usuario.senha, senha):
+                    # Adicionar informações à sessão
+                    session['usuario_id'] = usuario.email
+                    session['username'] = usuario.username
+                    session['nome_titular'] = usuario.username
 
-        if usuario:
-            print(f"Usuário encontrado: {usuario.username}")
-            if check_password_hash(usuario.senha, senha):
-                # Usando o email como identificador na sessão
-                session['usuario_id'] = usuario.email
-                session['username'] = usuario.username
-                session['nome_titular'] = usuario.username  # Armazenando o nome do titular na sessão
-                #flash('Login realizado com sucesso!')
-                print("Login bem-sucedido, redirecionando para index...")
-                return redirect(url_for('index'))
+                    flash("Login realizado com sucesso!", 'success')
+                    return redirect(url_for('index'))
+                else:
+                    flash("Senha incorreta.", 'error')
             else:
-                flash('Senha incorreta.')
-                print("Senha incorreta.")
-        else:
-            flash('Email não encontrado.')
-            print("Email não encontrado.")
+                flash("Email não encontrado.", 'error')
+
+            return redirect(url_for('login'))
+    except Exception as e:
+        print(f"Erro inesperado no login: {e}")
+        flash("Erro inesperado ao realizar o login. Entre em contato com o suporte.", 'error')
+        return redirect(url_for('login'))
 
     return render_template('login.html')
 
 
 
+
 @app.route('/logout', methods=['POST'])
 def logout():
-    session.clear()  # Limpa todos os dados da sessão
-    #flash('Você saiu da sessão com sucesso.')
-    return redirect(url_for('index'))  # Redireciona para a página de login
+    try:
+        session.clear()  # Limpa todos os dados da sessão
+        flash("Você saiu da sessão com sucesso.", 'success')
+    except Exception as e:
+        print(f"Erro ao realizar logout: {e}")
+        flash("Erro ao realizar o logout. Entre em contato com o suporte.", 'error')
+    return redirect(url_for('index'))  # Redireciona para a página inicial
 
 
 
-@app.route('/importar_produtos_parceiro')
+@app.route('/importar_produtos_parceiro')  # função do sistema
 def importar_produtos_parceiro():
     try:
         print("Fazendo a requisição para a API...")
-        response = requests.get('https://fakestoreapi.com/products')
+        response = requests.get('https://fakestoreapi.com/products', timeout=10)  # Define um timeout para a requisição
         print(f"Status Code: {response.status_code}")
         response.raise_for_status()  # Lança uma exceção se o status code não for 200
 
         produtos_parceiro = response.json()
         print(f"Produtos recebidos: {produtos_parceiro}")
 
+        # Itera sobre os produtos e verifica se já existem no banco
         for produto in produtos_parceiro:
-            print(f"Verificando se o produto '{produto['title']}' já existe...")
-            if not Produto.query.filter_by(nome=produto['title']).first():
-                novo_produto = Produto(
-                    nome=produto['title'],
-                    descricao=produto['description'],
-                    preco=float(produto['price']),
-                    imagem_url=produto['image']
-                )
-                db.session.add(novo_produto)
-                print(f"Produto '{produto['title']}' adicionado com sucesso.")
+            try:
+                print(f"Verificando se o produto '{produto['title']}' já existe...")
+                if not Produto.query.filter_by(nome=produto['title']).first():
+                    novo_produto = Produto(
+                        nome=produto['title'],
+                        descricao=produto['description'],
+                        preco=float(produto['price']),
+                        imagem_url=produto['image']
+                    )
+                    db.session.add(novo_produto)
+                    print(f"Produto '{produto['title']}' adicionado com sucesso.")
+            except Exception as e:
+                print(f"Erro ao processar o produto '{produto['title']}': {e}")
+                flash(f"Erro ao processar o produto '{produto['title']}': {e}", 'error')
 
-        db.session.commit()
-        flash('Produtos importados com sucesso!')
-    
+        # Comita as mudanças no banco de dados
+        try:
+            db.session.commit()
+            flash('Produtos importados com sucesso!', 'success')
+        except Exception as db_err:
+            print(f"Erro ao salvar produtos no banco de dados: {db_err}")
+            db.session.rollback()  # Reverte alterações em caso de erro
+            flash("Erro ao salvar produtos no banco de dados. Tente novamente.", 'error')
+
+    except requests.exceptions.Timeout:
+        print("A requisição para a API expirou.")
+        flash("A requisição para a API demorou muito tempo e foi interrompida. Tente novamente.", 'error')
     except requests.exceptions.RequestException as req_err:
-        print(f"Erro na requisição: {req_err}")
-        flash(f"Erro na requisição à API: {req_err}")
+        print(f"Erro na requisição à API: {req_err}")
+        flash(f"Erro ao acessar os dados da API: {req_err}", 'error')
     except Exception as e:
-        print(f"Erro ao importar produtos: {e}")
-        flash(f'Ocorreu um erro ao importar os produtos: {str(e)}')
-    
+        print(f"Erro inesperado ao importar produtos: {e}")
+        flash(f"Ocorreu um erro inesperado ao importar os produtos. Entre em contato com o suporte.", 'error')
+
     return redirect(url_for('index'))
+
 
 
 
