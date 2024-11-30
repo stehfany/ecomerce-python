@@ -173,6 +173,19 @@
             }
         }
     };
+
+
+    function validarQuantidade(produtoId) {
+            const quantidade = document.getElementById(`quantidade_${produtoId}`).value;
+            if (quantidade < 1) {
+                alert('A quantidade deve ser pelo menos 1.');
+                return false;
+            }
+            return true;
+        }
+
+      
+   
 </script>
 <div style="background-color: #007bff; padding:20px; margin-top: 100px;" class="col-12" id="footer-bottom">
     <div class="row justify-content-between">
