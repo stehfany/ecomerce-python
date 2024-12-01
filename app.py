@@ -17,15 +17,16 @@ app.secret_key = b'\xdc\xc1K\x1a\xf4\x8e+|\t\x8a\xb7l\xb1w\xaf\x82\xdd\x07wa\xb6
 database_url = os.getenv("DATABASE_URL", os.getenv("MSSQL_TCP_URL"))
 
 if database_url:
-    # Caso a variável DATABASE_URL esteja configurada no ambiente (Heroku ou outro)
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    # Configurar a URL do SQLAlchemy para MSSQL
+    # Transformar a string de conexão no formato esperado pelo SQLAlchemy
+    params = urllib.parse.quote_plus(database_url.replace("Server=", "DRIVER={ODBC Driver 17 for SQL Server};Server="))
+    app.config['SQLALCHEMY_DATABASE_URI'] = f"mssql+pyodbc:///?odbc_connect={params}"
 else:
-    # Configuração local para ambiente de desenvolvimento
+    # Configuração local para MySQL
     app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:12345@127.0.0.1:3306/ecommerce'
 
 # Desativar rastreamento de modificações para economizar recursos
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Desativa rastreamento de modificações
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False# Desativa rastreamento de modificações
 
 # Instância do SQLAlchemy para integração com o Flask
 db = SQLAlchemy(app)
