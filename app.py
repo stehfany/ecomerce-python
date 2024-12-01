@@ -16,12 +16,15 @@ app.secret_key = b'\xdc\xc1K\x1a\xf4\x8e+|\t\x8a\xb7l\xb1w\xaf\x82\xdd\x07wa\xb6
 
 database_url = os.getenv("DATABASE_URL", os.getenv("MSSQL_TCP_URL"))
 
-if os.getenv("DATABASE_URL"):
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("MSSQL_TCP_URL")  # URL do banco configurada no Heroku
+if database_url:
+    # Caso a variável DATABASE_URL esteja configurada no ambiente (Heroku ou outro)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
-    # Configuração local
+    # Configuração local para ambiente de desenvolvimento
     app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:12345@127.0.0.1:3306/ecommerce'
 
+# Desativar rastreamento de modificações para economizar recursos
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Desativa rastreamento de modificações
 
 # Instância do SQLAlchemy para integração com o Flask
@@ -775,8 +778,6 @@ def importar_produtos_parceiro():
 
 
 
-if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
-
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', debug=True)
 
