@@ -12,10 +12,14 @@ app = Flask(__name__)
 app.secret_key = b'\xdc\xc1K\x1a\xf4\x8e+|\t\x8a\xb7l\xb1w\xaf\x82\xdd\x07wa\xb6\x0cH\xf8'
 
 
-DATABASE_URL = os.getenv("MSSQL_TCP_URL")
-# Configuração da URI do banco de dados MySQL
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:12345@127.0.0.1:3306/ecommerce'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Desativa o rastreamento de modificações, economizando recursos.
+ #Verifica se está rodando no Heroku (variável de ambiente DATABASE_URL)
+if os.getenv("DATABASE_URL"):
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("MSSQL_TCP_URL")  # URL do banco configurada no Heroku
+else:
+    # Configuração local
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:12345@127.0.0.1:3306/ecommerce'
+
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Desativa rastreamento de modificações
 
 # Instância do SQLAlchemy para integração com o Flask
 db = SQLAlchemy(app)
