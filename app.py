@@ -5,12 +5,14 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import pymysql
 from sqlalchemy.exc import SQLAlchemyError
+import os
 
 app = Flask(__name__)
 
 app.secret_key = b'\xdc\xc1K\x1a\xf4\x8e+|\t\x8a\xb7l\xb1w\xaf\x82\xdd\x07wa\xb6\x0cH\xf8'
 
 
+DATABASE_URL = os.getenv("MSSQL_TCP_URL")
 # Configuração da URI do banco de dados MySQL
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:12345@127.0.0.1:3306/ecommerce'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Desativa o rastreamento de modificações, economizando recursos.
