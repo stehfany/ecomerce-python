@@ -6,28 +6,30 @@ from functools import wraps
 import pymysql
 from sqlalchemy.exc import SQLAlchemyError
 import os
-import urllib.parse
 
 app = Flask(__name__)
 
 app.secret_key = b'\xdc\xc1K\x1a\xf4\x8e+|\t\x8a\xb7l\xb1w\xaf\x82\xdd\x07wa\xb6\x0cH\xf8'
 
+MSSQL_TCP_URL = (
+    "mssql+pyodbc://utrm4cypesdbxiq:QUIA4MnHkA8s*ZBAO7vOb87@eu-az-sql-serv1.database.windows.net:1433"
+    "/dxy0jbpt9bco9vm?driver=ODBC+Driver+17+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no&Connection+Timeout=30"
+)
+
+MSSQL_URL = (
+    "mssql+pyodbc://utrm4cypesdbxiq:QUIA4MnHkA8s$x*ZBAO7vOb87@eu-az-sql-serv1.database.windows.net"
+    "/dxy0jbpt9bco9vm?driver=ODBC+Driver+17+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no&Connection+Timeout=30"
+)
+
 
  #Verifica se está rodando no Heroku (variável de ambiente DATABASE_URL)
-
-database_url = os.getenv("DATABASE_URL", os.getenv("MSSQL_TCP_URL"))
-
-if database_url:
-    # Configurar a URL do SQLAlchemy para MSSQL
-    # Transformar a string de conexão no formato esperado pelo SQLAlchemy
-    params = urllib.parse.quote_plus(database_url.replace("Server=", "DRIVER={ODBC Driver 17 for SQL Server};Server="))
-    app.config['SQLALCHEMY_DATABASE_URI'] = f"mssql+pyodbc:///?odbc_connect={params}"
+if os.getenv("DATABASE_URL"):
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("MSSQL_TCP_URL")  # URL do banco configurada no Heroku
 else:
-    # Configuração local para MySQL
+    # Configuração local
     app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:12345@127.0.0.1:3306/ecommerce'
 
-# Desativar rastreamento de modificações para economizar recursos
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False# Desativa rastreamento de modificações
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Desativa rastreamento de modificações
 
 # Instância do SQLAlchemy para integração com o Flask
 db = SQLAlchemy(app)
