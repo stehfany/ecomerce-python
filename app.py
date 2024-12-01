@@ -13,6 +13,9 @@ app.secret_key = b'\xdc\xc1K\x1a\xf4\x8e+|\t\x8a\xb7l\xb1w\xaf\x82\xdd\x07wa\xb6
 
 
  #Verifica se está rodando no Heroku (variável de ambiente DATABASE_URL)
+
+database_url = os.getenv("DATABASE_URL", os.getenv("MSSQL_TCP_URL"))
+
 if os.getenv("DATABASE_URL"):
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("MSSQL_TCP_URL")  # URL do banco configurada no Heroku
 else:
